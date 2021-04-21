@@ -10,7 +10,7 @@ from contextlib import closing
 
 class xlsx2sqlite3:
 
-    def __init__(self, db, xlsx, encoding, table):
+    def __init__(self, db, xlsx, encoding, table, sheet):
         self.db  = db
         self.xlsx = xlsx
         self.encoding = encoding
@@ -18,13 +18,19 @@ class xlsx2sqlite3:
         self.con = None
         self.cur = None
         self.firstline = 0
-        self.items = pd.read_excel( xlsx,
-                                    sheet_name='塩見さん存続案件',
-                                    header=0)
-        self.cols = self.items.columns
+        self.sheet = sheet
+        self.items = None
+        self.cols  = None
         return
 
-    def open(self):
+    def openFile(self):
+        self.items = pd.read_excel( self.xlsx,
+                                        sheet_name=self.sheet,
+                                        header=0)
+        self.cols = self.items.columns
+        return
+    
+    def openDB(self):
         logging.debug('opening db: %s' % self.db)        
         self.con = sqlite3.connect(self.db, isolation_level='EXCLUSIVE')
         self.cur = self.con.cursor()
@@ -126,16 +132,18 @@ if __name__ == '__main__':
     parser.add_argument('-db', '--db-file', default=':memory:')
     parser.add_argument('-enc', '--encoding', default='cp932')
     parser.add_argument('-table', '--table-name')
+    parser.add_argument('-sheet', '--sheet-name', default=0)    
     args = parser.parse_args()
 
     # コンストラクタ
     importer = xlsx2sqlite3(args.db_file, args.xlsx_file, 
-                           args.encoding, args.table_name)
+                            args.encoding, args.table_name, args.sheet_name)
 
     # データベースを開く
-    importer.open()
+    importer.openDB()
 
     # tableにCSVからデータをインポートする
+    importer.openFile()    
     importer.run()
 
     # データベースを閉じる
